@@ -5,14 +5,6 @@ import android.content.Context;
 import android.text.SpannableStringBuilder;
 import android.util.Log;
 
-import com.orhanobut.logger.AndroidLogAdapter;
-import com.orhanobut.logger.FormatStrategy;
-import com.orhanobut.logger.Logger;
-import com.orhanobut.logger.PrettyFormatStrategy;
-
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
@@ -36,15 +28,6 @@ public class Hook implements IXposedHookLoadPackage {
         if (!lpparam.packageName.contains("quizkampen")) {
             return;
         }
-
-        FormatStrategy mFormatting = PrettyFormatStrategy
-                .newBuilder()
-                .showThreadInfo(false)
-                .methodCount(0)
-                .methodOffset(0)
-                .tag("QuizduellXposed")
-                .build();
-        Logger.addLogAdapter(new AndroidLogAdapter(mFormatting));
 
         Log.d(TAG, "**********************************************************");
         Log.d(TAG, "************** QuizDuell Xposed Starting...***************");

@@ -6,11 +6,6 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
@@ -20,12 +15,6 @@ import static de.robv.android.xposed.XposedHelpers.findClass;
  */
 
 public class MultiDexHelper {
-    private static final String EXTRACTED_NAME_EXT = ".classes";
-    private static final String EXTRACTED_SUFFIX = ".zip";
-
-    private static final String SECONDARY_FOLDER_NAME = "code_cache" + File.separator +
-            "secondary-dexes";
-
     private static final String PREFS_FILE = "multidex.version";
     private static final String KEY_DEX_NUMBER = "dex.number";
 
