@@ -3,11 +3,11 @@ package de.qdxposed;
 import android.app.Application;
 import android.content.Context;
 import android.text.SpannableStringBuilder;
-import android.util.Log;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
+import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
@@ -21,7 +21,6 @@ import static de.robv.android.xposed.XposedHelpers.getObjectField;
 
 public class Hook implements IXposedHookLoadPackage {
 
-    private String TAG = "QuizduellXposed";
 
     @Override
     public void handleLoadPackage(final XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
@@ -29,10 +28,12 @@ public class Hook implements IXposedHookLoadPackage {
             return;
         }
 
-        Log.d(TAG, "**********************************************************");
-        Log.d(TAG, "************** QuizDuell Xposed Starting...***************");
-        Log.d(TAG, "**********************************************************");
+        log("**********************************************************");
+        log("************** QuizDuell Xposed Starting...***************");
+        log("**********************************************************");
 
+
+        findClasses(lpparam);
 
         if (MultiDexHelper.getDexCount(lpparam.appInfo) == 1) {
             startHooking(lpparam);
@@ -43,12 +44,30 @@ public class Hook implements IXposedHookLoadPackage {
                     startHooking(lpparam);
                 }
             });
-        } else Log.e(TAG, "NO DEX FILES FOUND, CANNOT DETERMINATE WHERE TO HOOK!");
+        } else log("NO DEX FILES FOUND, CANNOT DETERMINATE WHERE TO HOOK!");
+    }
+
+    private void findClasses(XC_LoadPackage.LoadPackageParam lpparam) {
+        if (XposedHelpers.findClassIfExists(Classes.old_names.AlternativeButton, lpparam.classLoader) != null) {
+            log("findClasses: using old classes");
+            Classes.AlternativeButton = XposedHelpers.findClass(Classes.old_names.AlternativeButton, lpparam.classLoader);
+            Classes.AlternativeButtons = XposedHelpers.findClass(Classes.old_names.AlternativeButtons, lpparam.classLoader);
+            Classes.QuestionInterface = XposedHelpers.findClass(Classes.old_names.QuestionInterface, lpparam.classLoader);
+            Classes.AlternativeInterface = XposedHelpers.findClass(Classes.old_names.AlternativeInterface, lpparam.classLoader);
+            Classes.QkSettingsHelper = XposedHelpers.findClass(Classes.old_names.QkSettingsHelper, lpparam.classLoader);
+        } else {
+            log("findClasses: using new classes");
+            Classes.AlternativeButton = XposedHelpers.findClass(Classes.new_names.AlternativeButton, lpparam.classLoader);
+            Classes.AlternativeButtons = XposedHelpers.findClass(Classes.new_names.AlternativeButtons, lpparam.classLoader);
+            Classes.QuestionInterface = XposedHelpers.findClass(Classes.new_names.QuestionInterface, lpparam.classLoader);
+            Classes.AlternativeInterface = XposedHelpers.findClass(Classes.new_names.AlternativeInterface, lpparam.classLoader);
+            Classes.QkSettingsHelper = XposedHelpers.findClass(Classes.new_names.QkSettingsHelper, lpparam.classLoader);
+        }
     }
 
     private void startHooking(XC_LoadPackage.LoadPackageParam lpparam) {
         if (lpparam.packageName.contains("lite")) {
-            removeAds(lpparam);
+            //removeAds(lpparam);
         }
 
         appendAnswer(lpparam);
@@ -56,7 +75,7 @@ public class Hook implements IXposedHookLoadPackage {
     }
 
     private void appendAnswer(XC_LoadPackage.LoadPackageParam lpparam) {
-        findAndHookMethod("se.feomedia.quizkampen.act.game.AlternativeButtons", lpparam.classLoader, "setAlternatives", "se.feomedia.quizkampen.modelinterfaces.Question", new XC_MethodHook() {
+        findAndHookMethod(Classes.AlternativeButtons, "setAlternatives", Classes.QuestionInterface, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 Object correctButton = callMethod(param.thisObject, "getCorrectButton");
@@ -67,48 +86,52 @@ public class Hook implements IXposedHookLoadPackage {
                                 ? (String) callMethod(callMethod(alternativeTextView, "getText"), "toString")
                                 : (String) callMethod(alternativeTextView, "getText")).contains("✓")) {
                     callMethod(alternativeTextView, "append", " ✓");
-                    Log.d(TAG, "Solution appended");
+                    log("Solution appended");
                 }
             }
         });
     }
 
-    private void appendOpponentAnswer(XC_LoadPackage.LoadPackageParam lpparam){
-        findAndHookMethod("se.feomedia.quizkampen.act.game.AlternativeButton", lpparam.classLoader, "changeAlternative","se.feomedia.quizkampen.modelinterfaces.Alternative", boolean.class, new XC_MethodHook() {
+    private void appendOpponentAnswer(XC_LoadPackage.LoadPackageParam lpparam) {
+        findAndHookMethod(Classes.AlternativeButton, "changeAlternative", Classes.AlternativeInterface, boolean.class, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                 boolean mIsOpponentAnswer = false;
                 try {
                     mIsOpponentAnswer = XposedHelpers.getBooleanField(param.thisObject, "mIsOpponentAnswer");
-                    Log.d(TAG, "Opponent answer: "+callMethod(callMethod(getObjectField(param.thisObject,"alternativeTextView"),"getText"),"toString")+" Value: "+mIsOpponentAnswer);
+                    log("Opponent answer: " + callMethod(callMethod(getObjectField(param.thisObject, "alternativeTextView"), "getText"), "toString") + " Value: " + mIsOpponentAnswer);
                 } catch (Exception e) {
-                    Log.d(TAG, "Field mIsOpponentAnswer not found");
+                    log("Field mIsOpponentAnswer not found");
                 }
-                    if (mIsOpponentAnswer) {
-                        Object alternativeTextView = getObjectField(param.thisObject, "alternativeTextView");
-                        if (!(
-                                callMethod(alternativeTextView, "getText") instanceof SpannableStringBuilder
-                                        ? (String) callMethod(callMethod(alternativeTextView, "getText"), "toString")
-                                        : (String) callMethod(alternativeTextView, "getText")).contains("⊕")) {
-                            callMethod(alternativeTextView, "append", " ⊕");
-                            Log.d(TAG, "Oppenent answer appended");
-                        }
+                if (mIsOpponentAnswer) {
+                    Object alternativeTextView = getObjectField(param.thisObject, "alternativeTextView");
+                    if (!(
+                            callMethod(alternativeTextView, "getText") instanceof SpannableStringBuilder
+                                    ? (String) callMethod(callMethod(alternativeTextView, "getText"), "toString")
+                                    : (String) callMethod(alternativeTextView, "getText")).contains("⊕")) {
+                        callMethod(alternativeTextView, "append", " ⊕");
+                        log("Oppenent answer appended");
                     }
+                }
             }
         });
 
     }
 
     private void removeAds(final XC_LoadPackage.LoadPackageParam lpparam) {
-        Log.d(TAG, "Found lite version, trying to remove ads!");
+        log("Found lite version, trying to remove ads!");
 
-        findAndHookMethod("se.feomedia.quizkampen.helpers.QkSettingsHelper", lpparam.classLoader, "shouldShowAds", Context.class, "se.feomedia.quizkampen.models.User", new XC_MethodReplacement() {
+        findAndHookMethod(Classes.QkSettingsHelper, "shouldShowAds", Context.class, "se.feomedia.quizkampen.models.User", new XC_MethodReplacement() {
             @Override
             protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
                 param.setResult(false);
-                Log.d(TAG, "Ads removed!");
+                log("Ads removed!");
                 return false;
             }
         });
+    }
+
+    private void log(String data) {
+        XposedBridge.log("QuizduellXposed: " + data);
     }
 }
