@@ -6,7 +6,7 @@ Also appends now a "⊕" at the answer the opponent gave.
 
 Should work on all Quizduell languanges, tested and developed with the german lite version 3.1.4 from the Google Play Store.
 
-Tested up to the QuizDuell version 4.4.9 and confirmed working.
+Tested up to the QuizDuell version 4.6.7 and confirmed working.
 
 ### Prequisites:
 
