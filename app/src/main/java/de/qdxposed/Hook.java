@@ -48,30 +48,48 @@ public class Hook implements IXposedHookLoadPackage {
     }
 
     private void findClasses(XC_LoadPackage.LoadPackageParam lpparam) {
-        if (XposedHelpers.findClassIfExists(Classes.old_names.AlternativeButton, lpparam.classLoader) != null) {
+        if (XposedHelpers.findClassIfExists(Classes.old.AlternativeButton, lpparam.classLoader) != null) {
             log("findClasses: using old classes");
-            Classes.AlternativeButton = XposedHelpers.findClass(Classes.old_names.AlternativeButton, lpparam.classLoader);
-            Classes.AlternativeButtons = XposedHelpers.findClass(Classes.old_names.AlternativeButtons, lpparam.classLoader);
-            Classes.QuestionInterface = XposedHelpers.findClass(Classes.old_names.QuestionInterface, lpparam.classLoader);
-            Classes.AlternativeInterface = XposedHelpers.findClass(Classes.old_names.AlternativeInterface, lpparam.classLoader);
-            Classes.QkSettingsHelper = XposedHelpers.findClass(Classes.old_names.QkSettingsHelper, lpparam.classLoader);
-        } else {
-            log("findClasses: using new classes");
-            Classes.AlternativeButton = XposedHelpers.findClass(Classes.new_names.AlternativeButton, lpparam.classLoader);
-            Classes.AlternativeButtons = XposedHelpers.findClass(Classes.new_names.AlternativeButtons, lpparam.classLoader);
-            Classes.QuestionInterface = XposedHelpers.findClass(Classes.new_names.QuestionInterface, lpparam.classLoader);
-            Classes.AlternativeInterface = XposedHelpers.findClass(Classes.new_names.AlternativeInterface, lpparam.classLoader);
-            Classes.QkSettingsHelper = XposedHelpers.findClass(Classes.new_names.QkSettingsHelper, lpparam.classLoader);
+            Classes.AlternativeButton = XposedHelpers.findClass(Classes.old.AlternativeButton, lpparam.classLoader);
+            Classes.AlternativeButtons = XposedHelpers.findClass(Classes.old.AlternativeButtons, lpparam.classLoader);
+            Classes.QuestionInterface = XposedHelpers.findClass(Classes.old.QuestionInterface, lpparam.classLoader);
+            Classes.AlternativeInterface = XposedHelpers.findClass(Classes.old.AlternativeInterface, lpparam.classLoader);
+            Classes.QkSettingsHelper = XposedHelpers.findClass(Classes.old.QkSettingsHelper, lpparam.classLoader);
+        } else if (XposedHelpers.findClassIfExists(Classes.pre_4_8_9.AlternativeButton, lpparam.classLoader) != null) {
+            log("findClasses: using pre 4.8.9 classes");
+            Classes.AlternativeButton = XposedHelpers.findClass(Classes.pre_4_8_9.AlternativeButton, lpparam.classLoader);
+            Classes.AlternativeButtons = XposedHelpers.findClass(Classes.pre_4_8_9.AlternativeButtons, lpparam.classLoader);
+            Classes.QuestionInterface = XposedHelpers.findClass(Classes.pre_4_8_9.QuestionInterface, lpparam.classLoader);
+            Classes.AlternativeInterface = XposedHelpers.findClass(Classes.pre_4_8_9.AlternativeInterface, lpparam.classLoader);
+            Classes.QkSettingsHelper = XposedHelpers.findClass(Classes.pre_4_8_9.QkSettingsHelper, lpparam.classLoader);
         }
     }
 
     private void startHooking(XC_LoadPackage.LoadPackageParam lpparam) {
         if (lpparam.packageName.contains("lite")) {
-            //removeAds(lpparam);
+            try {
+                removeAds(lpparam);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
-        appendAnswer(lpparam);
-        appendOpponentAnswer(lpparam);
+        try {
+            appendAnswer(lpparam);
+            appendOpponentAnswer(lpparam);
+        } catch (Exception e) {
+            log("Failed using old method, trying new...");
+            try {
+                new NewHook().hook(lpparam);
+            } catch (Exception e2) {
+                log("Failed using new Method: ");
+                try {
+                    hookRecent(lpparam);
+                } catch (Exception e3) {
+                    log("Can't hook QD using recent hooks, fuck.");
+                }
+            }
+        }
     }
 
     private void appendAnswer(XC_LoadPackage.LoadPackageParam lpparam) {
@@ -127,6 +145,17 @@ public class Hook implements IXposedHookLoadPackage {
                 param.setResult(false);
                 log("Ads removed!");
                 return false;
+            }
+        });
+    }
+
+    private void hookRecent(XC_LoadPackage.LoadPackageParam lpparam) {
+        findAndHookMethod(Classes.recent.BaseQuestion, lpparam.classLoader, "getCorrect", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                String correct = (String) getObjectField(param.thisObject, "correct");
+                correct = (correct != null && correct.charAt(correct.length() - 1) != '✓') ? correct + " ✓" : correct;
+                callMethod(param.thisObject, "setCorrect", correct);
             }
         });
     }

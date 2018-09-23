@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.os.Build;
 
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
@@ -19,10 +18,7 @@ public class MultiDexHelper {
     private static final String KEY_DEX_NUMBER = "dex.number";
 
     private static SharedPreferences getMultiDexPreferences(Context context) {
-        return context.getSharedPreferences(PREFS_FILE,
-                Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB
-                        ? Context.MODE_PRIVATE
-                        : Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
+        return context.getSharedPreferences(PREFS_FILE, Context.MODE_MULTI_PROCESS);
     }
 
     public static int getDexCount(ApplicationInfo mAppInfo){
